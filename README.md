@@ -1,22 +1,22 @@
-# CocoaSkills Specification
+# Curator Specification
 
 **Version:** 1.0.0-draft  
-**Date:** 2026-07-12  
+**Date:** 2026-07-13  
 **Authors:** Ivan Oparin, Alexey Grigorev  
 **Status:** Draft  
-**Compatibility target:** CocoaSkills 0.12.x  
-**Reference implementation:** [github.com/ivanopcode/cocoaskills](https://github.com/ivanopcode/cocoaskills) (`csk`, Python 3.11+, stdlib-only runtime)  
-**Reference registry server:** [github.com/ivanopcode/cocoaskills-registry](https://github.com/ivanopcode/cocoaskills-registry)
+**Reference implementation:** [github.com/relux-works/curator](https://github.com/relux-works/curator) (`curator`, Go)  
+**Other conforming implementations:** [github.com/ivanopcode/cocoaskills](https://github.com/ivanopcode/cocoaskills) (`csk`, Python 3.11+, stdlib-only runtime)  
+**Registry server implementation:** [github.com/ivanopcode/cocoaskills-registry](https://github.com/ivanopcode/cocoaskills-registry)
 
 ---
 
 ## Abstract
 
-CocoaSkills is a dependency manager for AI agent skills: reusable instruction packages that give coding agents specialized capabilities. The skill ecosystem is young, growing rapidly, and lacks standard tooling for declarative dependency management, reproducible installation, or supply chain security.
+Curator is a dependency manager for AI agent skills: reusable instruction packages that give coding agents specialized capabilities. The skill ecosystem is young, growing rapidly, and lacks standard tooling for declarative dependency management, reproducible installation, or supply chain security.
 
-This document specifies the CocoaSkills protocol and formats as implemented by the reference implementation: the skill package format (a constrained profile of the common SKILL.md convention plus the `csk-skill.json` manifest, schemas 1 through 5), the project manifest (`Skillfile.json`) with development substitutions, machine and system configuration, dependency closure resolution with exact references, the installation contract (context and runtime separation, per-agent adapters, install markers, content hashing), install scopes (project, global, hybrid), MCP server requirements, the source audit pipeline, and the audit registry protocol (Ed25519 signed audit records, deny-wins federation, signed snapshots, and an HTTP registry service with a hash-chained log and air-gap bundles).
+This document specifies the Curator protocol and formats as implemented by the reference implementation: the skill package format (a constrained profile of the common SKILL.md convention plus the `csk-skill.json` manifest, schemas 1 through 5), the project manifest (`Skillfile.json`) with development substitutions, machine and system configuration, dependency closure resolution with exact references, the installation contract (context and runtime separation, per-agent adapters, install markers, content hashing), install scopes (project, global, hybrid), MCP server requirements, the source audit pipeline, and the audit registry protocol (Ed25519 signed audit records, deny-wins federation, signed snapshots, and an HTTP registry service with a hash-chained log and air-gap bundles).
 
-The architecture draws from classical dependency managers (Bundler, SPM, Gradle, Cargo) but addresses problems specific to an infrastructure that remains immature. Skills are a new embodiment of source code: even a plain markdown skill file with no executables can be a vector for prompt injection, and as skills grow in complexity they pull in commands and external tools that demand explicit security boundaries. CocoaSkills answers this with declared capabilities, a machine-level source allowlist, a static audit gate, and registry-backed attestation and revocation verified with public key cryptography.
+The architecture draws from classical dependency managers (Bundler, SPM, Gradle, Cargo) but addresses problems specific to an infrastructure that remains immature. Skills are a new embodiment of source code: even a plain markdown skill file with no executables can be a vector for prompt injection, and as skills grow in complexity they pull in commands and external tools that demand explicit security boundaries. Curator answers this with declared capabilities, a machine-level source allowlist, a static audit gate, and registry-backed attestation and revocation verified with public key cryptography.
 
 The goal of this specification is interoperability. An independent skill manager built from this document alone works with the same skills, the same project manifests, and the same audit registries as the reference implementation. Normative sections describe only behavior that exists in the reference implementation; ideas that are not implemented live in the non-normative Future work appendix.
 
@@ -96,7 +96,7 @@ The goal of this specification is interoperability. An independent skill manager
   - [17.1 Conformance for Independent Implementations](#171-conformance-for-independent-implementations)
   - [17.2 SKILL.md Compatibility](#172-skillmd-compatibility)
   - [17.3 Coexisting Tools](#173-coexisting-tools)
-- [18. Reference Implementation Notes](#18-reference-implementation-notes)
+- [18. Implementations](#18-implementations)
 - [Appendix A: Future Work (Non-Normative)](#appendix-a-future-work-non-normative)
 - [Appendix B: Field Reference: csk-skill.json](#appendix-b-field-reference-csk-skilljson)
 - [Appendix C: Field Reference: Skillfile.json](#appendix-c-field-reference-skillfilejson)
@@ -106,19 +106,19 @@ The goal of this specification is interoperability. An independent skill manager
 
 ## 1. Overview
 
-CocoaSkills is a dependency manager for AI agent skills and contexts. It provides declarative, reproducible, security-gated installation of agent skill packages into project repositories.
+Curator is a dependency manager for AI agent skills and contexts. It provides declarative, reproducible, security-gated installation of agent skill packages into project repositories.
 
-CocoaSkills solves three problems:
+Curator solves three problems:
 
-1. **Non-declarative skill management.** The dominant workflow in the ecosystem remains imperative: skills are added one at a time, with limited manifest-driven resolution and no separation between what the model reads and what the machine executes. CocoaSkills combines a committed project manifest, transitive dependency resolution with exact references, a context and runtime split, and multi-agent delivery into one workflow.
+1. **Non-declarative skill management.** The dominant workflow in the ecosystem remains imperative: skills are added one at a time, with limited manifest-driven resolution and no separation between what the model reads and what the machine executes. Curator combines a committed project manifest, transitive dependency resolution with exact references, a context and runtime split, and multi-agent delivery into one workflow.
 
-2. **Non-reproducible environments.** Teams need every developer and CI runner to operate with the same skills at the same versions. CocoaSkills pins every skill to an exact git reference, resolves each closure name to exactly one commit and one source identity, records install markers with content hashes, and detects local tampering and moved tags on the next install.
+2. **Non-reproducible environments.** Teams need every developer and CI runner to operate with the same skills at the same versions. Curator pins every skill to an exact git reference, resolves each closure name to exactly one commit and one source identity, records install markers with content hashes, and detects local tampering and moved tags on the next install.
 
-3. **Fragmented supply chain security.** Content scanning alone does not protect against publisher impersonation, artifact tampering, or silent content mutation within a pinned version. CocoaSkills layers defenses: a machine-level source allowlist, declared capabilities, a manifest that cannot execute code at install time, a static audit gate, and an audit registry protocol where machines verify Ed25519-signed audit and revocation records from registries they explicitly trust (Section 13).
+3. **Fragmented supply chain security.** Content scanning alone does not protect against publisher impersonation, artifact tampering, or silent content mutation within a pinned version. Curator layers defenses: a machine-level source allowlist, declared capabilities, a manifest that cannot execute code at install time, a static audit gate, and an audit registry protocol where machines verify Ed25519-signed audit and revocation records from registries they explicitly trust (Section 13).
 
-The name "CocoaSkills" alludes to CocoaPods, the first dependency manager for iOS development, which brought order to a similarly immature ecosystem.
+The name reflects the role: a curator manages a collection, decides what enters it, and vouches for what it contains.
 
-This document is the protocol and format specification. The reference implementation is the `csk` CLI at [github.com/ivanopcode/cocoaskills](https://github.com/ivanopcode/cocoaskills); a conforming independent implementation interoperates with the same skills, projects, and registries (Section 17).
+This document is the protocol and format specification of an open protocol: any manager built from it interoperates with the same skills, projects, and registries (Section 17). The reference implementation is `curator` at [github.com/relux-works/curator](https://github.com/relux-works/curator); an independent Python implementation, `csk` at [github.com/ivanopcode/cocoaskills](https://github.com/ivanopcode/cocoaskills), conforms to the same protocol.
 
 ---
 
@@ -207,7 +207,7 @@ The full phase order is normative and specified in Section 8.1.
 
 ## 4. Skill Package Format
 
-A skill is a git repository (or a directory inside one) whose root contains a `SKILL.md` file. Everything else is optional. CocoaSkills consumes skills in this format and installs a filtered view of them into consuming projects.
+A skill is a git repository (or a directory inside one) whose root contains a `SKILL.md` file. Everything else is optional. Curator consumes skills in this format and installs a filtered view of them into consuming projects.
 
 ### 4.1 Package Layout
 
@@ -266,7 +266,7 @@ The rules below apply when the project selects a locale (Skillfile `locale` or m
 
 ### 4.4 Relationship to the Common SKILL.md Convention
 
-The package format is a constrained profile of the SKILL.md convention used across the agent ecosystem: a markdown instruction file with YAML frontmatter (`name`, `description`, optional `triggers`) plus supporting directories. Any CocoaSkills skill is readable by tools that understand plain SKILL.md packages. The profile adds three constraints: the context whitelist (Section 4.2), the optional machine manifest `csk-skill.json` (Section 5), and the localization contract (Section 4.3). It deliberately excludes arbitrary top-level content from the agent context.
+The package format is a constrained profile of the SKILL.md convention used across the agent ecosystem: a markdown instruction file with YAML frontmatter (`name`, `description`, optional `triggers`) plus supporting directories. Any Curator skill is readable by tools that understand plain SKILL.md packages. The profile adds three constraints: the context whitelist (Section 4.2), the optional machine manifest `csk-skill.json` (Section 5), and the localization contract (Section 4.3). It deliberately excludes arbitrary top-level content from the agent context.
 
 ---
 
@@ -422,7 +422,7 @@ Schema 5 introduces requirements on MCP servers configured in the consuming agen
 - `transport` is optional documentation: `stdio` or `http`.
 - `required_in` selects the check semantics: `any` (default) requires the server name to be configured in at least one target agent environment; `all` requires it in every target agent environment.
 
-The server name MUST match the name under which the server is registered in agent configuration files. Verification behavior and the per-agent configuration surfaces are specified in Section 11. CocoaSkills never launches or installs MCP servers; it verifies their presence in configuration.
+The server name MUST match the name under which the server is registered in agent configuration files. Verification behavior and the per-agent configuration surfaces are specified in Section 11. Curator never launches or installs MCP servers; it verifies their presence in configuration.
 
 ### 5.9 No Install Hooks
 
@@ -958,21 +958,22 @@ The source audit (Section 12) is a machine-local policy layer; implementations M
 
 ### 17.2 SKILL.md Compatibility
 
-The package format is a constrained profile of the SKILL.md convention (Section 4.4). CocoaSkills does not transform skill content beyond localization rendering (Section 4.3); any tool that reads plain SKILL.md packages can read installed CocoaSkills context.
+The package format is a constrained profile of the SKILL.md convention (Section 4.4). Curator does not transform skill content beyond localization rendering (Section 4.3); any tool that reads plain SKILL.md packages can read installed Curator context.
 
 ### 17.3 Coexisting Tools
 
-Skills remain consumable from any git host by URL. Adapter directories carry a managed-entries ledger so CocoaSkills never deletes or overwrites entries it does not manage (Section 10.1); manually placed skills coexist with managed ones.
+Skills remain consumable from any git host by URL. Adapter directories carry a managed-entries ledger so Curator never deletes or overwrites entries it does not manage (Section 10.1); manually placed skills coexist with managed ones.
 
 ---
 
-## 18. Reference Implementation Notes
+## 18. Implementations
 
 This section is informative.
 
-- The reference implementation is Python 3.11+, distributed as `cocoaskills` on PyPI (`pipx install cocoaskills`), through a Homebrew tap, and as a source repository. The installed runtime keeps zero third-party dependencies; Ed25519 verification is vendored in pure Python. The only system prerequisite is `git`.
-- The reference registry service (`csk-registry`) is a separate Python package (FastAPI, SQLite WAL) with a CLI: `genkey`, `issue-token`, `sign-record`, `export-snapshot`, `export-bundle`, `import-bundle`, `verify-chain`, `serve`. Server-side signing uses the `cryptography` package; that dependency never enters the client.
-- Windows is a first-class target: `win_path` command entries, `.cmd` shims, PowerShell hooks, and `%ProgramData%` system config.
+- The reference implementation is `curator` ([github.com/relux-works/curator](https://github.com/relux-works/curator)): Go, static binaries for macOS, Linux, and Windows, distributed through a Homebrew tap, Scoop, deb/rpm packages, and an install script, with signed and attested releases. Its conformance is gated by a golden byte-equality suite over this protocol's artifacts.
+- An independent conforming implementation is `csk` ([github.com/ivanopcode/cocoaskills](https://github.com/ivanopcode/cocoaskills)): Python 3.11+, distributed on PyPI, with a stdlib-only installed runtime (Ed25519 verification vendored in pure Python). Two independent codebases interoperating over the same wire formats is the working proof that the protocol is implementable from this document alone.
+- A registry service implementation ([github.com/ivanopcode/cocoaskills-registry](https://github.com/ivanopcode/cocoaskills-registry)) is a Python package (FastAPI, SQLite WAL) with a CLI: `genkey`, `issue-token`, `sign-record`, `export-snapshot`, `export-bundle`, `import-bundle`, `verify-chain`, `serve`.
+- Windows is a first-class target across implementations: `win_path` command entries, `.cmd` shims, PowerShell hooks, and `%ProgramData%` system config.
 
 ---
 
@@ -1031,17 +1032,17 @@ Primary inspiration for the publisher signing model explored in the original dra
 **Snyk ToxicSkills: Malicious AI Agent Skills on ClawHub**  
 Snyk Security Research, February 2026  
 https://snyk.io/blog/toxicskills-malicious-ai-agent-skills-clawhub/  
-Scanned 3,984 agent skills. Found 36.82% with at least one security flaw, 13.4% at critical severity, and 76 confirmed malicious payloads. The ClawHavoc campaign (January 2026) poisoned 341 skills on ClawHub. This research validates the necessity of the CocoaSkills source audit (Section 12) and registry revocation (Section 13). Specific attack patterns from this study informed the audit detectors.
+Scanned 3,984 agent skills. Found 36.82% with at least one security flaw, 13.4% at critical severity, and 76 confirmed malicious payloads. The ClawHavoc campaign (January 2026) poisoned 341 skills on ClawHub. This research validates the necessity of the Curator source audit (Section 12) and registry revocation (Section 13). Specific attack patterns from this study informed the audit detectors.
 
 **OWASP Agentic Skills Top 10 (AST10)**  
 OWASP Foundation, 2026  
 https://owasp.org/www-project-agentic-skills-top-10/  
-Catalogues the ten most critical security risks in agentic skill ecosystems: prompt injection, data exfiltration, privilege escalation, supply chain compromise, and others. The CocoaSkills audit detectors use AST10 categories as a primary taxonomy for detection patterns (Section 12).
+Catalogues the ten most critical security risks in agentic skill ecosystems: prompt injection, data exfiltration, privilege escalation, supply chain compromise, and others. The Curator audit detectors use AST10 categories as a primary taxonomy for detection patterns (Section 12).
 
 **SKILL.md Specification**  
 Anthropic, December 2025  
 https://agentskills.io/specification  
-De facto standard skill format adopted by 44+ agents. CocoaSkills preserves compatibility with this format (Section 17.2): csk-skill.json is a metadata companion to SKILL.md, adding dependency management and capability declarations without modifying the skill content format itself.
+De facto standard skill format adopted by 44+ agents. Curator preserves compatibility with this format (Section 17.2): csk-skill.json is a metadata companion to SKILL.md, adding dependency management and capability declarations without modifying the skill content format itself.
 
 **SSH Certificate Format (Internet-Draft)**  
 draft-miller-ssh-cert-06  
@@ -1052,20 +1053,20 @@ Technical specification of the SSH certificate format used by OpenSSH. The publi
 **npx skills (Vercel Labs)**  
 https://github.com/vercel-labs/skills; registry: https://skills.sh  
 Largest ecosystem (87K+ indexed skills, 44 agent support). Project-local installation by default. Clean UX for adding individual skills (`npx skills add <owner/repo>`).  
-**Strengths adopted by CocoaSkills:** project-local scope, git-based installation, multi-agent support.  
-**Gaps CocoaSkills addresses:** no declarative manifest (skills are added imperatively, one at a time), no reproducible lockfile (partial `skills-lock.json` exists but is output-only, not used for restore), no version pinning beyond git tree SHA, no dependency resolution, no security gating.
+**Strengths adopted by Curator:** project-local scope, git-based installation, multi-agent support.  
+**Gaps Curator addresses:** no declarative manifest (skills are added imperatively, one at a time), no reproducible lockfile (partial `skills-lock.json` exists but is output-only, not used for restore), no version pinning beyond git tree SHA, no dependency resolution, no security gating.
 
 **pixi-skills (pavelzw)**  
 https://github.com/pavelzw/pixi-skills  
 The only existing tool with a full manifest (`pixi.toml`), deterministic lockfile (`pixi.lock` with SAT-solved resolution), and frozen lockfile mode for CI. Resolves skill dependencies alongside runtime dependencies (Python, Node.js, CLI tools) via conda-forge and PyPI.  
-**Strengths recognized by CocoaSkills:** deterministic lockfile model, frozen install for CI, dependency resolution.  
-**Gaps that prevent adoption:** requires conda ecosystem (recipe.yaml + rattler-build publishing ceremony), two-step install process (pixi install + pixi-skills manage), heavy `.pixi/` directory, small skill catalog (~100 vs 87K on skills.sh), npm/cargo/gem dependencies still require manual task steps. CocoaSkills takes a purpose-built approach that avoids the conda packaging overhead while reaching reproducibility through exact references and install markers.
+**Strengths recognized by Curator:** deterministic lockfile model, frozen install for CI, dependency resolution.  
+**Gaps that prevent adoption:** requires conda ecosystem (recipe.yaml + rattler-build publishing ceremony), two-step install process (pixi install + pixi-skills manage), heavy `.pixi/` directory, small skill catalog (~100 vs 87K on skills.sh), npm/cargo/gem dependencies still require manual task steps. Curator takes a purpose-built approach that avoids the conda packaging overhead while reaching reproducibility through exact references and install markers.
 
 **vskill (verified-skill.com)**  
 https://verified-skill.com  
 Security-first skill verification tool (111K indexed skills). Three-tier trust model (Scanned / Verified / Certified). 38 deterministic security rules plus LLM-based intent analysis. Lockfile with SHA-256 and trust tier metadata.  
-**Strengths recognized by CocoaSkills:** security scanning as a first-class concern, trust tiering concept, deterministic rule-based analysis.  
-**Gaps that prevent adoption:** not a dependency manager (no manifest, no install-from-manifest, no dependency resolution). Complementary tool, not a replacement. CocoaSkills integrates scanning (Section 12) alongside dependency management and adds registry-backed attestation and revocation (Section 13), which vskill does not provide.
+**Strengths recognized by Curator:** security scanning as a first-class concern, trust tiering concept, deterministic rule-based analysis.  
+**Gaps that prevent adoption:** not a dependency manager (no manifest, no install-from-manifest, no dependency resolution). Complementary tool, not a replacement. Curator integrates scanning (Section 12) alongside dependency management and adds registry-backed attestation and revocation (Section 13), which vskill does not provide.
 
 **skillman (pi0/unjs)**  
 https://github.com/pi0/skillman  
@@ -1083,7 +1084,7 @@ Best security features among imperative tools: `asm audit security`, TUI dashboa
 https://github.com/rohitg00/skillkit  
 Format auto-translation (SKILL.md ↔ .cursorrules ↔ .mdc), memory persistence, multi-machine mesh (P2P skill distribution).  
 **Strengths:** format translation is valuable for multi-agent delivery.  
-**Gaps:** breadth over depth, not a dependency manager. Format translation is a feature CocoaSkills may adopt in a future version (Appendix A).
+**Gaps:** breadth over depth, not a dependency manager. Format translation is a feature Curator may adopt in a future version (Appendix A).
 
 ### Adjacent Infrastructure Projects
 
@@ -1095,7 +1096,7 @@ Keyless code signing and transparency logging. The Rekor transparency log provid
 
 **mise (jdx/mise)**  
 https://github.com/jdx/mise  
-Polyglot runtime version manager (successor to asdf). Manages Node.js, Python, Go, Ruby, and other runtime installations per-project via `.mise.toml`. CocoaSkills delegates system tool installation to tools like mise: a skill declares system commands (Section 5.6), csk verifies their presence on PATH, and `hint` fields can reference mise installation commands. CocoaSkills complements mise rather than replacing it.
+Polyglot runtime version manager (successor to asdf). Manages Node.js, Python, Go, Ruby, and other runtime installations per-project via `.mise.toml`. Curator delegates system tool installation to tools like mise: a skill declares system commands (Section 5.6), csk verifies their presence on PATH, and `hint` fields can reference mise installation commands. Curator complements mise rather than replacing it.
 
 **direnv (direnv/direnv)**  
 https://github.com/direnv/direnv  
@@ -1119,13 +1120,13 @@ Decentralized naming system based on blockchain technology. `id/` namespace reco
 
 **AAIF (AI Agent Interoperability Framework)**  
 https://aaif.io/  
-Linux Foundation-hosted vendor-neutral governance initiative for AI agent standards. Members include Anthropic, OpenAI, Google, Microsoft, and AWS. Relevant to the CocoaSkills multi-agent delivery model (Section 10): future AAIF standards for skill format interoperability could simplify or replace the agent adapter layer.
+Linux Foundation-hosted vendor-neutral governance initiative for AI agent standards. Members include Anthropic, OpenAI, Google, Microsoft, and AWS. Relevant to the Curator multi-agent delivery model (Section 10): future AAIF standards for skill format interoperability could simplify or replace the agent adapter layer.
 
 ### Standards and Governance
 
-| Standard | URL | Relevance to CocoaSkills |
+| Standard | URL | Relevance to Curator |
 |----------|-----|------------------------|
-| SKILL.md Specification | https://agentskills.io/specification | Skill content format. CocoaSkills preserves compatibility (Section 17.2). |
+| SKILL.md Specification | https://agentskills.io/specification | Skill content format. Curator preserves compatibility (Section 17.2). |
 | AGENTS.md | https://agents.md | Project-level agent instructions (OpenAI convention). Not generated by the implemented protocol. |
 | AAIF | https://aaif.io | Vendor-neutral agent governance. Future interoperability target. |
 | OWASP AST10 | https://owasp.org/www-project-agentic-skills-top-10/ | Security risk taxonomy. Primary source for audit detectors (Section 12). |
@@ -1144,7 +1145,7 @@ Linux Foundation-hosted vendor-neutral governance initiative for AI agent standa
 | cursor.directory | https://cursor.directory | none | None | 63K community. Cursor rules + MCP configurations. Predates SKILL.md. |
 | skill-forge (prefix.dev) | https://prefix.dev/skill-forge | ~100 | Conda package signing | Conda-packaged skills for pixi-skills. Inherits conda signing infrastructure. |
 
-CocoaSkills consumes skills from any git repository regardless of registry listing. These registries serve as discovery tools; CocoaSkills references repositories directly through git URLs in the Skillfile (Section 6).
+Curator consumes skills from any git repository regardless of registry listing. These registries serve as discovery tools; Curator references repositories directly through git URLs in the Skillfile (Section 6).
 
 <!-- relux-ecosystem:start -->
 
