@@ -1,17 +1,24 @@
-# CocoaSkill Specification
+# CocoaSkills Specification
 
-**Version:** 0.1.0-draft  
-**Date:** 2026-04-09  
+**Version:** 1.0.0-draft  
+**Date:** 2026-07-12  
 **Authors:** Ivan Oparin, Alexey Grigorev  
-**Status:** Draft
+**Status:** Draft  
+**Compatibility target:** CocoaSkills 0.12.x  
+**Reference implementation:** [github.com/ivanopcode/cocoaskills](https://github.com/ivanopcode/cocoaskills) (`csk`, Python 3.11+, stdlib-only runtime)  
+**Reference registry server:** [github.com/ivanopcode/cocoaskills-registry](https://github.com/ivanopcode/cocoaskills-registry)
 
 ---
 
 ## Abstract
 
-CocoaSkill is a dependency manager for AI agent skills: reusable instruction packages that give coding agents specialized capabilities. The skill ecosystem is young, growing rapidly, and lacks standard tooling for declarative dependency management, reproducible installation, or supply chain security.
+CocoaSkills is a dependency manager for AI agent skills: reusable instruction packages that give coding agents specialized capabilities. The skill ecosystem is young, growing rapidly, and lacks standard tooling for declarative dependency management, reproducible installation, or supply chain security.
 
-The architecture draws from classical dependency managers (Bundler, SPM, Gradle, Cargo) but addresses problems specific to an infrastructure that remains immature. Skills are a new embodiment of source code: even a plain markdown skill file with no executables can be a vector for prompt injection, and as skills grow in complexity they inevitably pull in binaries and other executables that demand security policies no less rigorous than industry best practice. Existing tools offer varying degrees of content scanning, yet few defend against supply chain attacks: publisher impersonation, artifact tampering, silent content mutation within a pinned version, and post-install substitution of verified artifacts. These are threats that content scanning alone cannot detect; they require public key cryptography. CocoaSkill closes this gap with an SSH certificate-based signing model, hierarchical CA trust, and pluggable identity verification: the first PKI purpose-built for agent skill artifacts.
+This document specifies the CocoaSkills protocol and formats as implemented by the reference implementation: the skill package format (a constrained profile of the common SKILL.md convention plus the `csk-skill.json` manifest, schemas 1 through 5), the project manifest (`Skillfile.json`) with development substitutions, machine and system configuration, dependency closure resolution with exact references, the installation contract (context and runtime separation, per-agent adapters, install markers, content hashing), install scopes (project, global, hybrid), MCP server requirements, the source audit pipeline, and the audit registry protocol (Ed25519 signed audit records, deny-wins federation, signed snapshots, and an HTTP registry service with a hash-chained log and air-gap bundles).
+
+The architecture draws from classical dependency managers (Bundler, SPM, Gradle, Cargo) but addresses problems specific to an infrastructure that remains immature. Skills are a new embodiment of source code: even a plain markdown skill file with no executables can be a vector for prompt injection, and as skills grow in complexity they pull in commands and external tools that demand explicit security boundaries. CocoaSkills answers this with declared capabilities, a machine-level source allowlist, a static audit gate, and registry-backed attestation and revocation verified with public key cryptography.
+
+The goal of this specification is interoperability. An independent skill manager built from this document alone works with the same skills, the same project manifests, and the same audit registries as the reference implementation. Normative sections describe only behavior that exists in the reference implementation; ideas that are not implemented live in the non-normative Future work appendix.
 
 ---
 
