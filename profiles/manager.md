@@ -95,6 +95,20 @@ the portable `CSK_PROJECT_ROOT` to the resolved project root. They MUST locate
 themselves rather than rely on the caller's current directory. A manager MAY
 also set tool-specific variables.
 
+Project command availability for agents MUST NOT depend on a user shell
+profile. The portable direct command locations are
+`<project>/.agents/bin/<command>` on Unix and
+`<project>\.agents\bin\<command>.cmd` on Windows. A manager SHOULD warn when
+prompt-visible skill instructions infer an installed command from its source
+runtime path or omit shell-neutral shim resolution.
+
+A manager SHOULD publish forwarding shims for global commands into a safe,
+writable directory that is already on the user `PATH`. It MUST NOT overwrite
+an unmanaged entry. When no safe directory exists, it retains the canonical
+global shims and warns with the canonical location and optional shell
+activation path. Forwarding locations and their ownership records are
+machine-local and implementation-specific.
+
 ## 4. Install scopes
 
 ### 4.1 Project
@@ -191,17 +205,32 @@ not override local or registry revocation.
 
 ## 8. Shell activation
 
+Shell activation is an OPTIONAL convenience for interactive users. A manager
+MUST NOT require it for agent command execution and MUST NOT modify a user
+shell profile without explicit user action.
+
 Shell activation searches upward from the current directory for the nearest
 `.agents/env.sh` or `.agents/env.ps1`. Entering or switching projects restores
 the saved pre-project `PATH` before sourcing the new environment. Leaving all
 projects restores that `PATH` and clears activation state. Nested projects use
 the nearest environment.
 
+Upward search MUST guarantee progress toward a filesystem root. A POSIX hook
+MUST treat an empty or non-absolute `PWD` as no active project. Before sourcing
+a newly selected project environment, a hook MUST establish an activation or
+loading guard so directory changes performed by that environment cannot
+re-enter the same activation. A POSIX hook running under Git Bash MUST accept
+native Windows drive paths for manager configuration and global-environment
+lookup.
+
 Bash integrates through `PROMPT_COMMAND`; zsh integrates through `precmd` and
 `chpwd`; PowerShell wraps the existing global `prompt` function while
 preserving its output and invokes activation before each prompt. Hook
 installation also invokes activation once immediately. Re-loading a hook MUST
 NOT stack duplicate wrappers or PATH entries.
+
+A CLI MAY cache generated hook code and print the shell-specific command that
+sources it. This avoids starting the manager executable from every new shell.
 
 Global activation is OPTIONAL and enabled by default by conforming CLI
 profiles. It is sourced once per global environment version and has lower PATH
