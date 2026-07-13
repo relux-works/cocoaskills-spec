@@ -42,8 +42,10 @@ handling.
 ### Registry service
 
 A registry service implements authenticated submission, countersigning,
-idempotency, deterministic record pagination, append-only log, exact Merkle
-tree, snapshots, and authenticated bundle export/import.
+auditor-scoped idempotency, snapshot-bound deterministic pagination,
+serialized durable append, append-only log, exact Merkle tree, immutable
+snapshots, authenticated bundle export/import, verified recovery, and rollback
+safe backup/restore according to `profiles/registry-service.md`.
 
 ## 3. Shared suite
 
@@ -59,7 +61,15 @@ The suite contains:
 - valid, forged, wrong-key-id, revoked, and malformed signed records;
 - snapshot rollback, freeze, future-skew, incomplete-field, and equivocation
   cases;
-- transparency chain, Merkle, bundle, pagination, caching, and deny-wins cases.
+- first-use, deleted-after-use, corrupted, and unavailable durable client
+  rollback-state cases;
+- retry classification and execution bounds, unchanged idempotent POST bytes,
+  total deadlines, redirect refusal, cursor cycles, and response limits;
+- transparency chain, Merkle, bundle, pagination, caching, and deny-wins cases;
+- conjunctive registry queries, exact artifact identity, snapshot-bound pages,
+  scoped idempotency, concurrent writers, transaction rollback, crash recovery,
+  immutable snapshots, restore checkpoints, key rotation, transport bounds,
+  rate limiting, and cache-control cases.
 
 Files under `conformance/v1/expected` are generated only by
 `tools/generate-vectors`. The generator imports no implementation packages.
@@ -115,4 +125,10 @@ A protocol release candidate may be published only when:
 4. Go and Python pass the same suite on all three operating systems;
 5. registry-service vectors pass;
 6. Markdown links and version references are valid;
-7. the release commit and tag are cryptographically signed.
+7. required security and interoperability review reports have no open critical
+   or high findings;
+8. the release commit and tag are cryptographically signed.
+
+For a stable version, `python tools/release_gate.py --version <version>` also
+requires two schema-valid independent reports, no open critical or high
+findings, and no normative diff after either reviewed commit.

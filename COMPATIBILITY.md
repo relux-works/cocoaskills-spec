@@ -19,6 +19,14 @@ series. Implementations MUST reject an unsupported version and MUST NOT guess
 its meaning. Unknown-field behavior is defined per schema; it is never inferred
 from the protocol release number.
 
+An incompatible structured-wire change requires a new `schema_version`, a new
+schema file, positive and negative vectors for both versions, and a migration
+note in `CHANGELOG.md`. A release never redefines old schema bytes in place.
+Changes to query evaluation, transaction guarantees, durability, or recovery
+may tighten a conformance profile without changing a JSON object. Such a
+service advertises the production profile only after it passes that profile's
+executable vectors.
+
 ## Compatibility identifiers
 
 The following deployed names are reserved across protocol 1.x and MUST NOT be
@@ -50,3 +58,10 @@ may be disabled sooner through a published advisory.
 The legacy `agents/runtime.json` manifest and legacy skill command dependency
 form remain readable in protocol 1.x. Writers MUST use `csk-skill.json` and
 `dependencies.skills`.
+
+Registry RC.2 preserves every endpoint and response envelope from RC.1. It
+defines multiple supplied filters as conjunctive, treats content hash as part
+of exact artifact identity, and binds pagination to one snapshot. Clients that
+already bounded responses and treated cursors as opaque require no wire
+migration. Registry services must complete their state and index migration
+before claiming the `registry-service` class.

@@ -1,4 +1,4 @@
-.PHONY: validate regenerate regenerate-check
+.PHONY: validate regenerate regenerate-check release-check
 
 validate:
 	python3 tools/validate.py
@@ -10,3 +10,7 @@ regenerate:
 regenerate-check:
 	go run ./tools/generate-vectors -root .
 	git diff --exit-code -- conformance/v1
+
+release-check: validate regenerate-check
+	test -n "$(VERSION)"
+	python3 tools/release_gate.py --version "$(VERSION)" --commit HEAD

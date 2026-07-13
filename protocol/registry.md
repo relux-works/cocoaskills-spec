@@ -2,7 +2,8 @@
 
 This document is normative. It defines signed registry objects, federation,
 rollback protection, caching, transparency logs, authenticated offline bundles,
-and the registry HTTP service.
+and the registry HTTP wire contract. Production services additionally conform
+to the [registry-service profile](../profiles/registry-service.md).
 
 ## 1. Curator Canonical JSON 1
 
@@ -107,6 +108,11 @@ A record matches an artifact when either:
 Content equality intentionally permits one audited tree mirrored from another
 source. Policy may forbid that through source allowlists.
 
+The registry-service latest-record projection uses the exact artifact key
+`(name, source_identity, commit, content_sha256)`. Matching and federation do
+not collapse records with different content hashes merely because their source
+identity and commit agree.
+
 ## 4. Federation
 
 Clients query every enabled registry with at least one pinned key. Responses
@@ -138,12 +144,29 @@ REQUIRED: `schema_version`, `merkle_root`, `log_size`, `head`, `version`,
   on every append and MUST be at least `log_size`.
 - `created_at` is canonical RFC 3339 UTC with seconds precision and `Z`.
 
+For one committed boundary, `created_at`, `head`, `merkle_root`, and `log_size`
+are immutable. A service MUST NOT refresh `created_at` without advancing the
+boundary. A conforming registry-service profile uses `version == log_size`;
+registry clients continue to accept the more general schema rule above.
+
 After signature verification, a client rejects a snapshot as tampered when its
 version is below the highest accepted version, it is older than the configured
 maximum age (default seven days), or it is more than the allowed clock skew in
 the future (default five minutes). The highest version is persisted atomically
-per registry URL. Equal versions are accepted only when `head`, `merkle_root`,
-and `log_size` equal the previously accepted state.
+per registry URL before the snapshot is accepted. This rollback state is
+durable security state, not a disposable response cache. Cache cleanup and
+garbage collection MUST NOT remove it. An existing malformed or unreadable
+state, or failure to persist the new state, makes that registry unavailable;
+the client MUST NOT treat either condition as first use. Equal versions are
+accepted only when `head`, `merkle_root`, and `log_size` equal the previously
+accepted state.
+
+Operators include rollback state in protected machine backup and restore it
+without lowering a recorded version. When an operator knows established state
+was lost and it cannot be recovered, trust in that registry remains disabled
+until an authenticated checkpoint or explicit operator rebootstrap establishes
+a new high-water state. Signing-key rotation, response-cache deletion, and
+implementation upgrades do not rebootstrap it.
 
 An unreachable snapshot warns but does not by itself invalidate individually
 signed records. A reachable invalid snapshot excludes that registry. When all
@@ -191,8 +214,9 @@ content_sha256, status, signature)` is idempotent.
 
 ## 8. Cache and offline behavior
 
-Record pages cache by normalized request URL and response media type. A fresh
-entry (default TTL one hour) is served without network. On refresh failure a
+Record pages cache by normalized request URL and response media type. Snapshot
+rollback state is stored outside this cache. A fresh entry (default TTL one
+hour) is served without network. On refresh failure a
 stale entry MAY be used within the offline grace period (default seven days)
 and MUST be marked stale in diagnostics. Past grace, the registry is
 unreachable. Invalid signatures and schema failures are never cached as valid.
@@ -200,6 +224,12 @@ unreachable. Invalid signatures and schema failures are never cached as valid.
 Cache writes are atomic. Cache keys include every query parameter and page
 cursor. Implementations MUST cap one response body at 16 MiB and total records
 processed for one artifact and registry at 10,000.
+
+Successful public GET responses SHOULD advertise a bounded freshness lifetime
+with `Cache-Control`. A client never serves a cached response past its local
+offline grace merely because a larger server freshness lifetime was received.
+Authenticated submissions, bearer-token failures, and all non-2xx responses
+use `Cache-Control: no-store`.
 
 ## 9. HTTP service
 
@@ -221,8 +251,11 @@ says otherwise.
 `/v1/records` GET accepts URL-encoded `source_identity`, `commit`, and
 `content_sha256`; at least identity plus commit or content hash is REQUIRED. It
 also accepts `limit` (default 100, range 1 through 1000) and opaque `cursor`.
-Results contain the latest matching record per artifact, deterministic by
-`name`, `source_identity`, and `commit`, plus `next_cursor` string or `null`.
+When more than one filter form is supplied, all supplied filters are
+conjunctive. `source_identity` and `commit` appear together or not at all.
+Results contain the latest matching record per exact artifact key,
+deterministic by `name`, `source_identity`, `commit`, and `content_sha256`, plus
+`next_cursor` string or `null`.
 The response schema validates the pagination envelope and requires each item
 to be an object. Clients validate each item independently against the audit
 record schema; a malformed item is ignored with a warning as required by
@@ -230,7 +263,10 @@ federation, without discarding other records from the page.
 
 `/v1/log` accepts non-negative `since`, the same `limit`, and cursor. Entries
 are ascending by sequence. A cursor is bound to its original query and expires
-no sooner than the advertised cache TTL.
+no sooner than the advertised cache TTL. The first page of either endpoint
+captures one signed snapshot boundary; all cursor pages are evaluated at that
+same boundary according to the registry-service profile. Unknown, repeated,
+unpaired, or present-but-empty query parameters return `400 invalid_query`.
 
 POST requires `Authorization: Bearer <token>`. Tokens carry at least 128 bits
 of entropy; services store only SHA-256 digests and compare in constant time.
@@ -239,9 +275,11 @@ must verify against that key. The service preserves the auditor signature as an
 endorsement, signs the outer record, and appends it.
 
 Clients SHOULD send `Idempotency-Key` equal to lowercase SHA-256 of the
-submitted CCJ-1 bytes. A service MUST return the original success response for
-the same key and body for at least 24 hours, and `409 idempotency_conflict` for
-the same key with a different body.
+submitted auditor-signed record's CCJ-1 bytes. The identity is scoped to the
+authenticated auditor. A service MUST return the original success response for
+the same auditor, key, and canonical body for at least 24 hours, and `409
+idempotency_conflict` for the same auditor and key with a different canonical
+body. Keys are 1 through 256 visible ASCII characters.
 
 ### 9.1 Status and errors
 
@@ -275,6 +313,23 @@ Every non-2xx JSON response conforms to `error-response-v1.schema.json`:
 Clients MUST reject non-2xx responses before parsing a success envelope. They
 MUST use bounded connect and read timeouts and MUST NOT include bearer tokens in
 cache keys, logs, or diagnostics.
+
+### 9.2 Transport and retries
+
+One request body and one response body are each limited to 16 MiB. POST accepts
+only `Content-Type: application/json` with UTF-8 and no `Content-Encoding`
+other than `identity`; violations return `415`, or `413` when the decoded size
+limit is exceeded. A server streams or bounds an absent or dishonest
+`Content-Length` rather than allocating from it.
+
+Clients document finite connection, read, and total-operation deadlines. GET
+MAY be retried after network failure, `429`, or `503`. POST MAY be retried only
+when it carries the same `Idempotency-Key`, authenticated auditor identity, and
+submitted record bytes. A retry never changes query parameters or follows a
+pagination cursor with a new first-page request. `Retry-After` is honored when
+valid and within the remaining deadline. Other 4xx responses are not retried.
+All retry loops have a documented finite attempt bound and use backoff; they
+MUST NOT retry indefinitely.
 
 ## 10. Publication
 

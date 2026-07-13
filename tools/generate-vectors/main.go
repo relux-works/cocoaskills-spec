@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	protocolVersion = "1.0.0-rc.1"
+	protocolVersion = "1.0.0-rc.2"
 	fixedCommit     = "0123456789abcdef0123456789abcdef01234567"
 	fixedTime       = "2026-07-13T00:00:00Z"
 	genesis         = "0000000000000000000000000000000000000000000000000000000000000000"
@@ -237,8 +237,181 @@ func writeBehaviorVectors(dir, snapshotHash string) {
 		"artifact_hash": snapshotHash,
 		"snapshot":      map[string]any{"max_age_seconds": 604800, "future_skew_seconds": 300, "rollback_rejected": true, "equal_version_equivocation_rejected": true},
 		"cache":         map[string]any{"ttl_seconds": 3600, "offline_grace_seconds": 604800, "body_limit_bytes": 16777216, "record_limit": 10000},
-		"pagination":    map[string]any{"default_limit": 100, "maximum_limit": 1000, "cursor_bound_to_query": true},
-		"submission":    map[string]any{"idempotency_key": "sha256_of_ccj1", "retention_seconds": 86400},
+		"pagination": map[string]any{
+			"default_limit": 100, "maximum_limit": 1000,
+			"cursor_bound_to_query": true, "cursor_bound_to_snapshot": true,
+			"filter_operator": "and",
+		},
+		"submission": map[string]any{
+			"idempotency_key": "sha256_of_ccj1", "idempotency_scope": "auditor_and_key",
+			"retention_seconds": 86400,
+		},
+	})
+	writeRegistryServiceVectors(dir)
+	writeRegistryClientVectors(dir)
+}
+
+func writeRegistryServiceVectors(dir string) {
+	commitA := strings.Repeat("a", 40)
+	commitB := strings.Repeat("b", 40)
+	hashA := "sha256:" + strings.Repeat("1a", 32)
+	hashB := "sha256:" + strings.Repeat("2b", 32)
+	sourceA := "git.example.com/skills/alpha"
+	sourceB := "mirror.example.com/skills/beta"
+	record := func(id, name, source, commit, contentHash, status string) map[string]any {
+		return map[string]any{
+			"id": id,
+			"record": map[string]any{
+				"schema_version": 1, "name": name, "source_identity": source,
+				"commit": commit, "content_sha256": contentHash, "status": status,
+				"audit": map[string]any{"case": id},
+			},
+		}
+	}
+	records := []any{
+		record("alpha-audited", "alpha", sourceA, commitA, hashA, "audited"),
+		record("alpha-revoked", "alpha", sourceA, commitA, hashA, "revoked"),
+		record("alpha-equivocated", "alpha", sourceA, commitA, hashB, "pending"),
+		record("beta-mirror", "beta", sourceB, commitB, hashA, "audited"),
+	}
+	writeJSON(filepath.Join(dir, "registry-service.json"), map[string]any{
+		"artifact_key": []any{"name", "source_identity", "commit", "content_sha256"},
+		"sort_key":     []any{"name", "source_identity", "commit", "content_sha256"},
+		"records":      records,
+		"query_cases": []any{
+			map[string]any{
+				"name":         "identity-pair-keeps-content-equivocation",
+				"query":        map[string]any{"source_identity": sourceA, "commit": commitA},
+				"expected_ids": []any{"alpha-revoked", "alpha-equivocated"},
+			},
+			map[string]any{
+				"name":         "content-hash-matches-mirrors",
+				"query":        map[string]any{"content_sha256": hashA},
+				"expected_ids": []any{"alpha-revoked", "beta-mirror"},
+			},
+			map[string]any{
+				"name":         "all-filters-are-conjunctive",
+				"query":        map[string]any{"source_identity": sourceA, "commit": commitA, "content_sha256": hashB},
+				"expected_ids": []any{"alpha-equivocated"},
+			},
+			map[string]any{
+				"name":         "conjunctive-mismatch-is-empty",
+				"query":        map[string]any{"source_identity": sourceB, "commit": commitB, "content_sha256": hashB},
+				"expected_ids": []any{},
+			},
+			map[string]any{"name": "source-without-commit", "query": map[string]any{"source_identity": sourceA}, "error": "invalid_query"},
+			map[string]any{"name": "commit-without-source", "query": map[string]any{"commit": commitA}, "error": "invalid_query"},
+		},
+		"pagination": map[string]any{
+			"query":                        map[string]any{"content_sha256": hashA, "limit": 1},
+			"boundary_log_size":            4,
+			"expected_pages":               []any{[]any{"alpha-revoked"}, []any{"beta-mirror"}},
+			"append_after_first_page":      record("alpha-recovered", "alpha", sourceA, commitA, hashA, "audited"),
+			"expected_original_cursor_ids": []any{"beta-mirror"},
+			"expected_new_query_ids":       []any{"alpha-recovered", "beta-mirror"},
+			"cursor_rejections":            []any{"changed_query", "changed_limit", "wrong_endpoint", "expired", "unavailable_snapshot"},
+			"invalid_cursor_status":        404,
+		},
+		"idempotency_cases": []any{
+			map[string]any{
+				"name": "same-auditor-replay", "auditors": []any{"auditor-a", "auditor-a"},
+				"key": "request-1", "body_ids": []any{"alpha-audited", "alpha-audited"},
+				"statuses": []any{201, 200}, "appends": 1,
+			},
+			map[string]any{
+				"name": "same-auditor-conflict", "auditors": []any{"auditor-a", "auditor-a"},
+				"key": "request-2", "body_ids": []any{"alpha-audited", "alpha-equivocated"},
+				"statuses": []any{201, 409}, "appends": 1,
+			},
+			map[string]any{
+				"name": "different-auditors-do-not-conflict", "auditors": []any{"auditor-a", "auditor-b"},
+				"key": "shared-key", "body_ids": []any{"alpha-audited", "alpha-equivocated"},
+				"statuses": []any{201, 201}, "appends": 2,
+			},
+		},
+		"transaction_cases": []any{
+			map[string]any{"name": "concurrent-writers", "writers": 32, "expected_first_seq": 1, "expected_last_seq": 32, "contiguous": true},
+			map[string]any{"name": "failure-before-commit", "injection_point": "after_log_insert", "state_unchanged": true},
+			map[string]any{"name": "bundle-import-failure", "injection_point": "before_import_ledger", "state_unchanged": true},
+		},
+		"snapshot": map[string]any{
+			"version_equals_log_size": true, "created_at_immutable_per_boundary": true,
+			"key_rotation_preserves_body": true,
+		},
+		"recovery_cases": []any{
+			map[string]any{"name": "valid-restart", "mutation": "none", "ready": true},
+			map[string]any{"name": "broken-previous-hash", "mutation": "prev_hash", "ready": false},
+			map[string]any{"name": "broken-entry-hash", "mutation": "entry_hash", "ready": false},
+			map[string]any{"name": "missing-sequence", "mutation": "sequence_gap", "ready": false},
+			map[string]any{"name": "idempotency-orphan", "mutation": "idempotency_seq", "ready": false},
+			map[string]any{"name": "import-ledger-orphan", "mutation": "import_seq", "ready": false},
+			map[string]any{"name": "missing-service-metadata", "mutation": "metadata", "ready": false},
+			map[string]any{"name": "missing-schema-table", "mutation": "schema_table", "ready": false},
+		},
+		"restore_cases": []any{
+			map[string]any{"name": "checkpoint-equal", "restored_version": 8, "checkpoint_version": 8, "matching_head": true, "ready": true},
+			map[string]any{"name": "checkpoint-rollback", "restored_version": 7, "checkpoint_version": 8, "matching_head": false, "ready": false},
+			map[string]any{"name": "checkpoint-equivocation", "restored_version": 8, "checkpoint_version": 8, "matching_head": false, "ready": false},
+		},
+		"limits": map[string]any{
+			"body_bytes": 16777216, "page_items": 1000, "cursor_characters": 4096,
+			"idempotency_key_characters": 256, "idempotency_retention_seconds": 86400,
+		},
+		"transport_cases": []any{
+			map[string]any{"name": "maximum-page-size", "query_limit": 1000, "status": 200},
+			map[string]any{"name": "oversize-page", "query_limit": 1001, "status": 400, "error": "invalid_query"},
+			map[string]any{"name": "oversize-cursor", "cursor_characters": 4097, "status": 404, "error": "invalid_cursor"},
+			map[string]any{"name": "oversize-request-body", "body_bytes": 16777217, "status": 413, "error": "request_too_large"},
+			map[string]any{"name": "compressed-request-body", "content_encoding": "gzip", "status": 415, "error": "unsupported_media_type"},
+			map[string]any{"name": "maximum-idempotency-key", "idempotency_key_characters": 256, "status": 201},
+			map[string]any{"name": "oversize-idempotency-key", "idempotency_key_characters": 257, "status": 400, "error": "invalid_idempotency_key"},
+			map[string]any{"name": "non-visible-idempotency-key", "idempotency_key": "contains space", "status": 400, "error": "invalid_idempotency_key"},
+			map[string]any{"name": "network-rate-limit", "configured_requests": 1, "status": 429, "error": "rate_limited", "retry_after": true},
+			map[string]any{"name": "auditor-rate-limit", "configured_submissions": 1, "status": 429, "error": "rate_limited", "retry_after": true},
+		},
+		"cache_cases": []any{
+			map[string]any{"name": "public-read", "request": "GET /v1/snapshot", "cache_control": "public"},
+			map[string]any{"name": "authenticated-write", "request": "POST /v1/records", "cache_control": "no-store"},
+			map[string]any{"name": "error-response", "request": "GET /v1/records invalid", "cache_control": "no-store"},
+		},
+	})
+}
+
+func writeRegistryClientVectors(dir string) {
+	writeJSON(filepath.Join(dir, "registry-client.json"), map[string]any{
+		"snapshot_transitions": []any{
+			map[string]any{"name": "advance-after-key-rotation", "stored_version": 7, "candidate_version": 8, "same_body": false, "candidate_key": "new", "accepted": true},
+			map[string]any{"name": "restore-rollback", "stored_version": 8, "candidate_version": 7, "same_body": false, "candidate_key": "new", "accepted": false},
+			map[string]any{"name": "equal-version-repeat", "stored_version": 8, "candidate_version": 8, "same_body": true, "candidate_key": "new", "accepted": true},
+			map[string]any{"name": "equal-version-equivocation", "stored_version": 8, "candidate_version": 8, "same_body": false, "candidate_key": "new", "accepted": false},
+		},
+		"retry_cases": []any{
+			map[string]any{"name": "get-network", "method": "GET", "outcome": "network_error", "idempotency_key": false, "retry_permitted": true},
+			map[string]any{"name": "get-rate-limit", "method": "GET", "outcome": "429", "idempotency_key": false, "retry_permitted": true},
+			map[string]any{"name": "get-unavailable", "method": "GET", "outcome": "503", "idempotency_key": false, "retry_permitted": true},
+			map[string]any{"name": "get-conflict", "method": "GET", "outcome": "409", "idempotency_key": false, "retry_permitted": false},
+			map[string]any{"name": "post-idempotent-unavailable", "method": "POST", "outcome": "503", "idempotency_key": true, "retry_permitted": true},
+			map[string]any{"name": "post-unsafe-unavailable", "method": "POST", "outcome": "503", "idempotency_key": false, "retry_permitted": false},
+			map[string]any{"name": "post-idempotent-bad-request", "method": "POST", "outcome": "400", "idempotency_key": true, "retry_permitted": false},
+		},
+		"retry_policy": map[string]any{
+			"max_attempts": 3, "get_total_deadline_seconds": 30,
+			"post_total_deadline_seconds": 45, "follow_redirects": false,
+		},
+		"pagination_rejections": []any{
+			map[string]any{"name": "repeated-cursor", "error": "pagination_cycle"},
+			map[string]any{"name": "oversize-cursor", "characters": 4097, "error": "invalid_cursor"},
+			map[string]any{"name": "record-limit", "records": 10001, "error": "record_limit"},
+			map[string]any{"name": "oversize-response", "bytes": 16777217, "error": "body_limit"},
+		},
+		"state_key":                 "canonical_registry_url",
+		"key_rotation_resets_state": false,
+		"rollback_state_cases": []any{
+			map[string]any{"name": "missing-on-first-use", "state": "missing", "accepted": true},
+			map[string]any{"name": "deleted-after-prior-use", "state": "deleted", "accepted": false},
+			map[string]any{"name": "corrupted-existing-state", "state": "malformed", "accepted": false},
+			map[string]any{"name": "unavailable-state-directory", "state": "unavailable", "accepted": false},
+		},
 	})
 }
 

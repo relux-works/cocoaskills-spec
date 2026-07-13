@@ -11,7 +11,7 @@ import urllib.parse
 from pathlib import Path
 from typing import Any
 
-from jsonschema import Draft202012Validator
+from jsonschema import Draft202012Validator, FormatChecker
 from jsonschema.exceptions import SchemaError
 from referencing import Registry, Resource
 
@@ -19,6 +19,7 @@ from referencing import Registry, Resource
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMAS = ROOT / "schemas" / "v1"
 SUITE = ROOT / "conformance" / "v1"
+REVIEWS = ROOT / "reviews"
 SAFE_INTEGER = 9_007_199_254_740_991
 
 
@@ -98,8 +99,8 @@ def validate_schemas() -> None:
 def validate_manifest() -> None:
     manifest_path = SUITE / "manifest.json"
     manifest = load_json(manifest_path)
-    if manifest.get("protocol_version") != "1.0.0-rc.1":
-        raise ValidationFailure("vector manifest protocol_version is not 1.0.0-rc.1")
+    if manifest.get("protocol_version") != "1.0.0-rc.2":
+        raise ValidationFailure("vector manifest protocol_version is not 1.0.0-rc.2")
     entries = manifest.get("files")
     if not isinstance(entries, list):
         raise ValidationFailure("vector manifest files must be a list")
@@ -126,9 +127,47 @@ def validate_manifest() -> None:
             load_json(vector_path)
 
 
+def validate_review_evidence() -> None:
+    schema_path = REVIEWS / "review-report.schema.json"
+    schema = load_json(schema_path)
+    try:
+        Draft202012Validator.check_schema(schema)
+    except SchemaError as exc:
+        raise ValidationFailure(f"{schema_path}: invalid Draft 2020-12 schema: {exc.message}") from exc
+    validator = Draft202012Validator(schema, format_checker=FormatChecker())
+    for name, expected in (("valid.json", True), ("invalid.json", False)):
+        path = REVIEWS / "examples" / name
+        errors = list(validator.iter_errors(load_json(path)))
+        if (not errors) != expected:
+            detail = "valid" if not errors else errors[0].message
+            raise ValidationFailure(f"review example {name}: expected valid={expected}, got {detail}")
+    for directory in sorted(REVIEWS.iterdir()):
+        if not directory.is_dir() or directory.name == "examples":
+            continue
+        if re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", directory.name) is None:
+            raise ValidationFailure(f"unexpected review evidence directory {directory.name}")
+        for path in sorted(directory.glob("*.json")):
+            errors = list(validator.iter_errors(load_json(path)))
+            if errors:
+                raise ValidationFailure(f"{path}: {errors[0].message}")
+
+
 def require_sorted_unique(values: Any, label: str) -> None:
     if not isinstance(values, list) or values != sorted(values) or len(values) != len(set(values)):
         raise ValidationFailure(f"{label} must be a sorted unique array")
+
+
+def require_named_cases(values: Any, label: str, required: set[str]) -> None:
+    if not isinstance(values, list):
+        raise ValidationFailure(f"{label} must be an array")
+    names = [item.get("name") for item in values if isinstance(item, dict)]
+    if len(names) != len(values) or any(not isinstance(name, str) or not name for name in names):
+        raise ValidationFailure(f"{label} cases require non-empty names")
+    if len(names) != len(set(names)):
+        raise ValidationFailure(f"{label} case names must be unique")
+    missing = sorted(required - set(names))
+    if missing:
+        raise ValidationFailure(f"{label} is missing cases: {', '.join(missing)}")
 
 
 def validate_vector_semantics() -> None:
@@ -156,6 +195,140 @@ def validate_vector_semantics() -> None:
     if {item["error"] for item in invalid_ccj} != expected_errors:
         raise ValidationFailure("canonical-invalid vectors do not cover all CCJ-1 rejection classes")
 
+    service = load_json(SUITE / "vectors" / "registry-service.json")
+    expected_key = ["name", "source_identity", "commit", "content_sha256"]
+    if service.get("artifact_key") != expected_key or service.get("sort_key") != expected_key:
+        raise ValidationFailure("registry-service artifact and sort keys are incomplete")
+    records = service.get("records")
+    if not isinstance(records, list) or len(records) < 4:
+        raise ValidationFailure("registry-service records are incomplete")
+    record_ids = [item.get("id") for item in records if isinstance(item, dict)]
+    if len(record_ids) != len(records) or len(record_ids) != len(set(record_ids)):
+        raise ValidationFailure("registry-service record ids must be present and unique")
+    require_named_cases(
+        service.get("query_cases"),
+        "registry-service query",
+        {
+            "identity-pair-keeps-content-equivocation",
+            "content-hash-matches-mirrors",
+            "all-filters-are-conjunctive",
+            "conjunctive-mismatch-is-empty",
+            "source-without-commit",
+            "commit-without-source",
+        },
+    )
+    pagination = service.get("pagination")
+    if (
+        not isinstance(pagination, dict)
+        or pagination.get("boundary_log_size") != len(records)
+        or pagination.get("invalid_cursor_status") != 404
+        or not pagination.get("expected_pages")
+    ):
+        raise ValidationFailure("registry-service pagination boundary is incomplete")
+    if set(pagination.get("cursor_rejections", [])) != {
+        "changed_query",
+        "changed_limit",
+        "wrong_endpoint",
+        "expired",
+        "unavailable_snapshot",
+    }:
+        raise ValidationFailure("registry-service cursor rejection classes are incomplete")
+    require_named_cases(
+        service.get("idempotency_cases"),
+        "registry-service idempotency",
+        {"same-auditor-replay", "same-auditor-conflict", "different-auditors-do-not-conflict"},
+    )
+    require_named_cases(
+        service.get("transaction_cases"),
+        "registry-service transaction",
+        {"concurrent-writers", "failure-before-commit", "bundle-import-failure"},
+    )
+    require_named_cases(
+        service.get("recovery_cases"),
+        "registry-service recovery",
+        {
+            "valid-restart",
+            "broken-previous-hash",
+            "broken-entry-hash",
+            "missing-sequence",
+            "idempotency-orphan",
+            "import-ledger-orphan",
+            "missing-service-metadata",
+            "missing-schema-table",
+        },
+    )
+    require_named_cases(
+        service.get("restore_cases"),
+        "registry-service restore",
+        {"checkpoint-equal", "checkpoint-rollback", "checkpoint-equivocation"},
+    )
+    require_named_cases(
+        service.get("transport_cases"),
+        "registry-service transport",
+        {
+            "maximum-page-size",
+            "oversize-page",
+            "oversize-cursor",
+            "oversize-request-body",
+            "compressed-request-body",
+            "maximum-idempotency-key",
+            "oversize-idempotency-key",
+            "non-visible-idempotency-key",
+            "network-rate-limit",
+            "auditor-rate-limit",
+        },
+    )
+    require_named_cases(
+        service.get("cache_cases"),
+        "registry-service cache",
+        {"public-read", "authenticated-write", "error-response"},
+    )
+
+    client = load_json(SUITE / "vectors" / "registry-client.json")
+    require_named_cases(
+        client.get("snapshot_transitions"),
+        "registry-client snapshot transition",
+        {"advance-after-key-rotation", "restore-rollback", "equal-version-repeat", "equal-version-equivocation"},
+    )
+    require_named_cases(
+        client.get("retry_cases"),
+        "registry-client retry",
+        {
+            "get-network",
+            "get-rate-limit",
+            "get-unavailable",
+            "get-conflict",
+            "post-idempotent-unavailable",
+            "post-unsafe-unavailable",
+            "post-idempotent-bad-request",
+        },
+    )
+    retry_values = {item["retry_permitted"] for item in client["retry_cases"]}
+    if retry_values != {True, False}:
+        raise ValidationFailure("registry-client retry vectors need permitted and forbidden cases")
+    if client.get("retry_policy") != {
+        "max_attempts": 3,
+        "get_total_deadline_seconds": 30,
+        "post_total_deadline_seconds": 45,
+        "follow_redirects": False,
+    }:
+        raise ValidationFailure("registry-client retry policy is incomplete")
+    require_named_cases(
+        client.get("pagination_rejections"),
+        "registry-client pagination rejection",
+        {"repeated-cursor", "oversize-cursor", "record-limit", "oversize-response"},
+    )
+    require_named_cases(
+        client.get("rollback_state_cases"),
+        "registry-client rollback state",
+        {
+            "missing-on-first-use",
+            "deleted-after-prior-use",
+            "corrupted-existing-state",
+            "unavailable-state-directory",
+        },
+    )
+
 
 MARKDOWN_LINK = re.compile(r"(?<!!)\[[^\]]+\]\(([^)]+)\)")
 
@@ -180,7 +353,13 @@ def validate_local_links() -> None:
 
 
 def main() -> int:
-    checks = [validate_schemas, validate_manifest, validate_vector_semantics, validate_local_links]
+    checks = [
+        validate_schemas,
+        validate_manifest,
+        validate_review_evidence,
+        validate_vector_semantics,
+        validate_local_links,
+    ]
     try:
         for check in checks:
             check()

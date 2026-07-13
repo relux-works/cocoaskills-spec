@@ -98,11 +98,11 @@
     },
     {
       "path": "schema-cases/conformance-claim-v1/invalid.json",
-      "sha256": "sha256:c222604e69fde0f980d3ecf88c9541a6a0414fab094aaf1e4379cd74364d438f"
+      "sha256": "sha256:2ab0a691d2f46e2975592450246840bfadbed74dae8ddd3b2c418ab05ffcbc20"
     },
     {
       "path": "schema-cases/conformance-claim-v1/valid.json",
-      "sha256": "sha256:f2dc23db6960ac261f6e26868cf6099d36d34fcc7fbe6aa10ad207bdbb9e391e"
+      "sha256": "sha256:78531051959f4d73cc090be1b0e6deb845ec5b8de963485b2c9d93fce806d1b8"
     },
     {
       "path": "schema-cases/csk-skill-v1/invalid.json",
@@ -306,11 +306,19 @@
     },
     {
       "path": "vectors/registry-behavior.json",
-      "sha256": "sha256:77fa5ec72c8fa2d791944c465a2481a6f16ef679ff26b2bebad72f50daec31ff"
+      "sha256": "sha256:b8a92a41ae66984b870e58d47ee19f7790ac6c78cd0cb9507cd2a240bcf1bd1e"
+    },
+    {
+      "path": "vectors/registry-client.json",
+      "sha256": "sha256:2e5cdce709f9f5178cef9d734b672b68a758118cbd7f45b36e8db5569dae2117"
     },
     {
       "path": "vectors/registry-resolution.json",
       "sha256": "sha256:0137fcf9354295977f73ad95a6af0fde8d1c02aada878b012822cc1bde5e1c18"
+    },
+    {
+      "path": "vectors/registry-service.json",
+      "sha256": "sha256:7e8cb23ccb18e786ea06c20e617553d17d4e6b0a1001142fcc89360fb69ca2f5"
     },
     {
       "path": "vectors/source-identities.json",
@@ -319,5 +327,5 @@
   ],
   "generated_at": "2026-07-13T00:00:00Z",
   "generator": "tools/generate-vectors",
-  "protocol_version": "1.0.0-rc.1"
+  "protocol_version": "1.0.0-rc.2"
 }
