@@ -39,7 +39,7 @@ jobs:
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           repository: ivanopcode/cocoaskills
-          ref: d2db86ce0c999da97829e4900c50f7350b777015
+          ref: 49fc1ad7c40876b458315d00b7acacc67c74fd5d
           path: implementations/manager
 
       - name: Checkout registry service
