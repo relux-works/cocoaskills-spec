@@ -31,7 +31,7 @@ jobs:
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           repository: relux-works/curator
-          ref: ecb6c1af0f4bc4056bead4095933e0b83db7d2b1
+          ref: ada48a83770690dde4406a5ea1982bd01f719415
           path: implementations/go
           submodules: true
 
@@ -39,14 +39,14 @@ jobs:
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           repository: ivanopcode/cocoaskills
-          ref: 788676c1ede6e0da46d8d2604ee16814e917071d
+          ref: 98f456cb153c6650e1e46747146e6bf7eecaebda
           path: implementations/manager
 
       - name: Checkout registry service
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
-          repository: ivanopcode/cocoaskills-registry
-          ref: 0151057bdbb1bea5ccaa6c018bf20a5cb1444514
+          repository: relux-works/curator-skill-registry
+          ref: c8795406fc8cc4459f8be296488fdec7cb772982
           path: implementations/registry
 
       - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
