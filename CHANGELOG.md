@@ -29,6 +29,10 @@ Versioning for the complete specification set.
   and registry-service snapshot version to equal log size.
 - Defined an external high-water checkpoint as a signed registry snapshot and
   made stable release artifacts conditional on two passing independent reports.
+- Added review-report schema v2, requiring separate public reviewer identities
+  and explicit non-maintainer/non-author attestations, with executable
+  stable-gate regression tests. Draft v1 reports remain readable but are not
+  valid stable-release evidence.
 - Separated durable client rollback state from disposable response caches and
   required existing corruption and persistence failures to fail closed.
 

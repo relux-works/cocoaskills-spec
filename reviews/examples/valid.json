@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "protocol_version": "1.0.0",
   "review_type": "security",
   "reviewed_commit": "0123456789abcdef0123456789abcdef01234567",
@@ -8,6 +8,8 @@
     "affiliation": "Independent Security Lab",
     "contact": "reviewer@example.com",
     "independent": true,
+    "project_maintainer": false,
+    "authored_reviewed_changes": false,
     "conflicts": "No conflicts identified."
   },
   "scope": ["protocol/registry.md", "profiles/registry-service.md"],
@@ -24,4 +26,3 @@
     }
   ]
 }
-

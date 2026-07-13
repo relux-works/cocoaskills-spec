@@ -41,8 +41,11 @@ Before a stable release, maintainers freeze a commit that already carries the
 stable protocol version. One reviewer who is not a project maintainer or author
 of the reviewed changes performs the security review. A different independent
 reviewer performs the interoperability review. Affiliations and conflicts are
-disclosed. Reports follow `reviews/review-report.schema.json` and retain a
-public source URL establishing authorship and discussion.
+disclosed. Each reviewer explicitly attests that they are not a project
+maintainer and did not author or commit the reviewed changes. Reports use
+different stable public reviewer contacts, follow
+`reviews/review-report-v2.schema.json`, and retain a public source URL
+establishing authorship and discussion.
 
 Critical and high findings must be resolved before release. A correction to a
 normative file creates a new candidate that must be reviewed again. After a

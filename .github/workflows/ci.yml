@@ -43,6 +43,9 @@ jobs:
       - name: Validate schemas, cases, manifest, and local links
         run: python tools/validate.py
 
+      - name: Test stable release gate
+        run: python -B -m unittest discover -s tools -p 'test_*.py'
+
       - name: Verify generator and cryptographic vectors
         run: go test ./tools/...
 

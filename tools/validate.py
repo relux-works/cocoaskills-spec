@@ -128,12 +128,16 @@ def validate_manifest() -> None:
 
 
 def validate_review_evidence() -> None:
-    schema_path = REVIEWS / "review-report.schema.json"
-    schema = load_json(schema_path)
-    try:
-        Draft202012Validator.check_schema(schema)
-    except SchemaError as exc:
-        raise ValidationFailure(f"{schema_path}: invalid Draft 2020-12 schema: {exc.message}") from exc
+    for schema_name in ("review-report.schema.json", "review-report-v2.schema.json"):
+        schema_path = REVIEWS / schema_name
+        schema = load_json(schema_path)
+        try:
+            Draft202012Validator.check_schema(schema)
+        except SchemaError as exc:
+            raise ValidationFailure(
+                f"{schema_path}: invalid Draft 2020-12 schema: {exc.message}"
+            ) from exc
+    schema = load_json(REVIEWS / "review-report-v2.schema.json")
     validator = Draft202012Validator(schema, format_checker=FormatChecker())
     for name, expected in (("valid.json", True), ("invalid.json", False)):
         path = REVIEWS / "examples" / name

@@ -61,10 +61,11 @@ def validate_version(version: str) -> None:
 
 
 def validate_reviews(version: str, release_commit: str) -> None:
-    schema = load_json(ROOT / "reviews" / "review-report.schema.json")
+    schema = load_json(ROOT / "reviews" / "review-report-v2.schema.json")
     validator = Draft202012Validator(schema, format_checker=FormatChecker())
     review_root = ROOT / "reviews" / version
     reviewed_types: set[str] = set()
+    reviewer_contacts: dict[str, str] = {}
     for expected_type in ("security", "interoperability"):
         path = review_root / f"{expected_type}.json"
         if not path.is_file():
@@ -77,6 +78,14 @@ def validate_reviews(version: str, release_commit: str) -> None:
             raise ReleaseFailure(f"{path.relative_to(ROOT)} identifies the wrong release or review type")
         if report["conclusion"] != "pass":
             raise ReleaseFailure(f"{path.relative_to(ROOT)} conclusion is not pass")
+        reviewer_contact = report["reviewer"]["contact"].strip().casefold()
+        previous_type = reviewer_contacts.get(reviewer_contact)
+        if previous_type is not None:
+            raise ReleaseFailure(
+                f"{path.relative_to(ROOT)} repeats the {previous_type} reviewer; "
+                "stable security and interoperability reviews require different reviewer contacts"
+            )
+        reviewer_contacts[reviewer_contact] = expected_type
         blocking = [
             finding["id"]
             for finding in report["findings"]

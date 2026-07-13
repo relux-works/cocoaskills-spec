@@ -25,6 +25,9 @@ approve changes; CI enforces the mechanically verifiable items.
   `reviews/1.0.0/security.json` with conclusion `pass`.
 - [ ] An independent interoperability reviewer publishes
   `reviews/1.0.0/interoperability.json` with conclusion `pass`.
+- [ ] The two reports identify different stable reviewer contacts, and each
+  reviewer attests that they are neither a project maintainer nor an author or
+  committer of the reviewed changes.
 - [ ] Neither report has an open critical or high finding.
 - [ ] Only `reviews/` changed after each report's `reviewed_commit`.
 - [ ] The release commit and annotated `v1.0.0` tag verify against
@@ -37,4 +40,3 @@ Run the local release gate before signing a tag:
 ```text
 python tools/release_gate.py --version 1.0.0 --commit HEAD
 ```
-

@@ -39,6 +39,7 @@ jobs:
           git verify-tag "$GITHUB_REF_NAME"
           git verify-commit "$GITHUB_SHA"
           python tools/validate.py
+          python -B -m unittest discover -s tools -p 'test_*.py'
           go test ./tools/...
           go run ./tools/generate-vectors -root .
           git diff --exit-code -- conformance/v1

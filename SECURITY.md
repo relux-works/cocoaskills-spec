@@ -49,7 +49,7 @@ Stable protocol releases require:
 
 `1.0.0-rc.2` is not promoted to stable until an independent security review
 and an independent interoperability review conform to
-`reviews/review-report.schema.json`. Each report identifies the reviewed
+`reviews/review-report-v2.schema.json`. Each report identifies the reviewed
 candidate commit and a public authorship trail. Stable release CI rejects open
 critical or high findings and rejects normative changes made after either
 review. See `RELEASE.md` for the complete gate.

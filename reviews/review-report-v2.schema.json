@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://relux-works.github.io/curator-spec/reviews/review-report.schema.json",
-  "title": "Curator Protocol independent review report",
+  "$id": "https://relux-works.github.io/curator-spec/reviews/review-report-v2.schema.json",
+  "title": "Curator Protocol independent review report v2",
   "type": "object",
   "required": [
     "schema_version",
@@ -16,18 +16,28 @@
     "findings"
   ],
   "properties": {
-    "schema_version": {"const": 1},
+    "schema_version": {"const": 2},
     "protocol_version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
     "review_type": {"enum": ["security", "interoperability"]},
     "reviewed_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
     "reviewer": {
       "type": "object",
-      "required": ["name", "affiliation", "contact", "independent", "conflicts"],
+      "required": [
+        "name",
+        "affiliation",
+        "contact",
+        "independent",
+        "project_maintainer",
+        "authored_reviewed_changes",
+        "conflicts"
+      ],
       "properties": {
         "name": {"type": "string", "minLength": 1, "maxLength": 200},
         "affiliation": {"type": "string", "minLength": 1, "maxLength": 200},
-        "contact": {"type": "string", "minLength": 1, "maxLength": 500},
+        "contact": {"type": "string", "minLength": 1, "maxLength": 500, "pattern": "\\S"},
         "independent": {"const": true},
+        "project_maintainer": {"const": false},
+        "authored_reviewed_changes": {"const": false},
         "conflicts": {"type": "string", "minLength": 1, "maxLength": 2000}
       },
       "additionalProperties": false

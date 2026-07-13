@@ -2,6 +2,7 @@
 
 validate:
 	python3 tools/validate.py
+	python3 -B -m unittest discover -s tools -p 'test_*.py'
 	go test ./tools/...
 
 regenerate:
