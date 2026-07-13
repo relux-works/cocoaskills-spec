@@ -18,11 +18,11 @@
     },
     {
       "path": "expected/registry/bundle.json",
-      "sha256": "sha256:23df4c0a3fd15f903ba8454adc0f7b918a25c5d126e60ab344ff1f94532fe76f"
+      "sha256": "sha256:07234f9a8ed6d0320f4669bf90384035c300dbc06ced64105df01bcfbed82d88"
     },
     {
       "path": "expected/registry/log.json",
-      "sha256": "sha256:a67ee3aa4cdd22026a8eaf9746c0fb0138a0342b52b9b767a4eaff6fb4e3e89e"
+      "sha256": "sha256:30aefd8db52b437225793dec16fa71c5f3bd9acd36c58db8d5ff65c78a182502"
     },
     {
       "path": "expected/registry/pinned_key.txt",
@@ -30,27 +30,27 @@
     },
     {
       "path": "expected/registry/record_audited.json",
-      "sha256": "sha256:eac27edb850228dafc8f4472843fd134adf1ad7caf11fd4ef4dd538b9b4da476"
+      "sha256": "sha256:b5218f68151b56a7f4e4d00acc4e4a75e2113bb06d035a6faa473a8e5173a823"
     },
     {
       "path": "expected/registry/record_forged.json",
-      "sha256": "sha256:52a987154e55c6540902a6d1aee836e5558557db4bc526e8a08cc4cbdf207fdb"
+      "sha256": "sha256:1d92a2a130dfb03800c8cd122a875d146eab9229b01aca197c7e3ad4e4447746"
     },
     {
       "path": "expected/registry/record_revoked.json",
-      "sha256": "sha256:6322b94ff53d1232d52762917267075eb855cbfb2e6ab4a9e854dabd061f23fa"
+      "sha256": "sha256:48c7186ac05378e388a1eafd439fbd8d0f7870920d45b619240485622f99d714"
     },
     {
       "path": "expected/registry/record_wrong_key_id.json",
-      "sha256": "sha256:8aee31e51cb8393296d61f79a7057563a86116daba6f3440cff8cc9659a121d1"
+      "sha256": "sha256:53a9d57a651a4b81762a22ec83aff491c889b890408b581ec4a3f7ed386e77b1"
     },
     {
       "path": "expected/registry/snapshot.json",
-      "sha256": "sha256:d97e913fd6ee5d9537529e01dfb17cccec0877ac8ad14c9857895e214eccdb19"
+      "sha256": "sha256:d320af1a303893c47c720e3c8d2ea2a6660c1ce6af55c3b6cad8f0246639b8e6"
     },
     {
       "path": "expected/snapshot_sha256.txt",
-      "sha256": "sha256:90f1b37cdf8410fcbc82859b8e06b67308253570d5fdb63b252949e4ecb8d38d"
+      "sha256": "sha256:8dbd1f8368cb2c5c9a13de2bfa1135754789deab847e8d72c0447e9a4c7893e7"
     },
     {
       "path": "fixtures/skill/.skill_triggers/en.md",
@@ -67,6 +67,10 @@
     {
       "path": "fixtures/skill/csk-skill.json",
       "sha256": "sha256:9c731b224c3c510224094201602aba3d632cc615a026121f6a4dff83f2291b65"
+    },
+    {
+      "path": "fixtures/skill/locales/metadata.json",
+      "sha256": "sha256:fcf376ac8bd03713871a55a0b2f5d9e207c4536eec9e1698036fc9e61f4cfdd3"
     },
     {
       "path": "fixtures/skill/references/notes.md",
@@ -86,11 +90,11 @@
     },
     {
       "path": "schema-cases/audit-record-v1/invalid.json",
-      "sha256": "sha256:4ceb944ded365b7a71ba122e1543e8fca3d4641907a0ca8e55bfda8b27a3886c"
+      "sha256": "sha256:ff7642dbde51677e37675eb5810e6648a1454c8c37ae03d4754350a989ba6313"
     },
     {
       "path": "schema-cases/audit-record-v1/valid.json",
-      "sha256": "sha256:eac27edb850228dafc8f4472843fd134adf1ad7caf11fd4ef4dd538b9b4da476"
+      "sha256": "sha256:b5218f68151b56a7f4e4d00acc4e4a75e2113bb06d035a6faa473a8e5173a823"
     },
     {
       "path": "schema-cases/conformance-claim-v1/invalid.json",
@@ -182,7 +186,7 @@
     },
     {
       "path": "schema-cases/log-response-v1/valid.json",
-      "sha256": "sha256:9817a73a41a2ac6d25797e0502ce35edfdbaf4b5e05ec5032de5ab4fc98bfee5"
+      "sha256": "sha256:482f50f1277f7b8406a368733e215127033e080e765a521e65937f763a21c162"
     },
     {
       "path": "schema-cases/manager-config-v1/invalid.json",
@@ -198,15 +202,15 @@
     },
     {
       "path": "schema-cases/records-response-v1/valid.json",
-      "sha256": "sha256:10594816a1cd393d12f31c2e727820ca48a172353e787f2d14841f6604ec4765"
+      "sha256": "sha256:be9f5531e19e72f7f6ef08de83a9347ffab543674d57c3ea75b139bb5b138986"
     },
     {
       "path": "schema-cases/registry-bundle-v1/invalid.json",
-      "sha256": "sha256:ec4eab5ccca8700e6a8d20bbf13d70155444a2f9f9f6980eb004b39748b15337"
+      "sha256": "sha256:82c41833edb31c314cc1c04151731a105d529a681410cede8036f170e72a40f1"
     },
     {
       "path": "schema-cases/registry-bundle-v1/valid.json",
-      "sha256": "sha256:23df4c0a3fd15f903ba8454adc0f7b918a25c5d126e60ab344ff1f94532fe76f"
+      "sha256": "sha256:07234f9a8ed6d0320f4669bf90384035c300dbc06ced64105df01bcfbed82d88"
     },
     {
       "path": "schema-cases/registry-log-entry-v1/invalid.json",
@@ -214,7 +218,7 @@
     },
     {
       "path": "schema-cases/registry-log-entry-v1/valid.json",
-      "sha256": "sha256:6f88bb83b785a0b500e6ca1202ca2a26537691f8c0dabf6b8e34bfa10cc72ee2"
+      "sha256": "sha256:248daf7c558b3bf6bd02eb2024ae576171336e4b89425538e644b3544d19a9f6"
     },
     {
       "path": "schema-cases/registry-meta-response-v1/invalid.json",
@@ -226,11 +230,11 @@
     },
     {
       "path": "schema-cases/registry-snapshot-v1/invalid.json",
-      "sha256": "sha256:7ddd8fdd05f260126e2e7a2cc393d6a39a1d4d1b5640461bd443d4917ed8b358"
+      "sha256": "sha256:ae6ea98fbd26024fc5ac46c2515ef3152c4782cd9605a55b7102d2e20e841be9"
     },
     {
       "path": "schema-cases/registry-snapshot-v1/valid.json",
-      "sha256": "sha256:d97e913fd6ee5d9537529e01dfb17cccec0877ac8ad14c9857895e214eccdb19"
+      "sha256": "sha256:d320af1a303893c47c720e3c8d2ea2a6660c1ce6af55c3b6cad8f0246639b8e6"
     },
     {
       "path": "schema-cases/signature-envelope-v1/invalid.json",
@@ -238,7 +242,7 @@
     },
     {
       "path": "schema-cases/signature-envelope-v1/valid.json",
-      "sha256": "sha256:547b8e55307136678434c286e330311163d9d71571d50933578016814a1f8151"
+      "sha256": "sha256:bdded75c263906cbc8198dc7d151646b39c85f3a617792189c1614c24d769a47"
     },
     {
       "path": "schema-cases/skillfile-dev-v1/invalid.json",
@@ -262,7 +266,7 @@
     },
     {
       "path": "schema-cases/submission-response-v1/valid.json",
-      "sha256": "sha256:8193b869e9f0c53c8ca73a47f66795998403797530f9c54f9503afc377cc4411"
+      "sha256": "sha256:bcfb6fde20d46bddadb0af96cb49ac9e2e5afcf53421be677e2c75c1fe28f409"
     },
     {
       "path": "schema-cases/system-config-v1/invalid.json",
@@ -290,7 +294,7 @@
     },
     {
       "path": "vectors/registry-behavior.json",
-      "sha256": "sha256:9c91c0475f416306788cedb0daf8fc5942bc43791e3d499050c2ad4f2941679f"
+      "sha256": "sha256:77fa5ec72c8fa2d791944c465a2481a6f16ef679ff26b2bebad72f50daec31ff"
     },
     {
       "path": "vectors/registry-resolution.json",
