@@ -3,6 +3,19 @@
 All notable protocol changes are recorded here. Versions follow Semantic
 Versioning for the complete specification set.
 
+## Unreleased
+
+### Changed
+
+- Made shell activation an explicitly optional interactive convenience and
+  required agent command execution to remain independent from user profiles.
+- Defined portable direct project-shim locations and safe, non-destructive
+  publication of global forwarding shims.
+- Clarified finite upward search, activation reentrancy guards, Git Bash
+  handling of native Windows paths, and cached hook installation.
+- Added manager guidance for warning about prompt-visible runtime source paths
+  and missing shell-neutral command resolution.
+
 ## 1.0.0-rc.1 - 2026-07-13
 
 ### Added
