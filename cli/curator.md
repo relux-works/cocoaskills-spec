@@ -31,7 +31,7 @@ identifiers.
 | `curator audit --allow <hash> --reason <text>` | Create an operator pin |
 | `curator audit --publish <record> --registry <url>` | Publish an auditor-signed record |
 | `curator gc` | Collect unreferenced machine state |
-| `curator shell-init <zsh\|bash\|powershell> [--no-global]` | Print shell integration |
+| `curator shell-init [auto\|zsh\|bash\|powershell] [--install] [--no-global]` | Print or cache optional shell integration |
 
 Exit code 0 is success. Curator distinguishes usage errors, partial multi-
 project failure, drift checks, and security-policy blocks with non-zero codes;
@@ -39,15 +39,31 @@ scripts should use `status --json` when they need structured details.
 
 ## Developer shell
 
+Shell profile setup is optional. Agent instructions can invoke project
+commands directly through `.agents/bin/<command>` on Unix or
+`.agents\bin\<command>.cmd` on Windows. Global installation publishes
+forwarding shims to a safe existing user-bin directory when possible.
+Set `CURATOR_GLOBAL_USER_BIN` to a writable directory already on `PATH` when
+automatic selection is unavailable.
+
+For interactive bare command names, cache the hook once:
+
 ```bash
-eval "$(curator shell-init zsh)"    # or bash
+curator shell-init --install
+# Add the source command printed above to .zshrc or .bashrc.
 ```
 
-For PowerShell, add the emitted hook to the profile:
+On Windows, automatic detection selects PowerShell unless `SHELL` identifies
+Git Bash. Add the printed dot-source command to the PowerShell profile only if
+interactive activation is wanted:
 
 ```powershell
-curator shell-init powershell | Out-String | Invoke-Expression
+curator shell-init --install
 ```
+
+The cached hook is sourced without starting Curator on each shell launch.
+`CURATOR_AUTO_ENV=0` disables project-directory scanning while retaining
+global activation. Curator never edits a shell profile automatically.
 
 ## CI example
 
