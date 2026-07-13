@@ -1,6 +1,6 @@
 # Curator Protocol Specification
 
-**Version:** 1.0.0-rc.1
+**Version:** 1.0.0-rc.2
 
 **Date:** 2026-07-13
 
@@ -37,10 +37,12 @@ The release consists of the following documents and artifacts:
 | [Protocol core](protocol/core.md) | Normative package, manifest, identity, closure, hashing, and marker rules |
 | [Registry protocol](protocol/registry.md) | Normative canonical JSON, signatures, records, snapshots, log, bundles, cache, and HTTP rules |
 | [Manager profile](profiles/manager.md) | Normative installation lifecycle, scopes, adapters, MCP, audit, and shell behavior |
+| [Registry service profile](profiles/registry-service.md) | Normative production guarantees for pagination, transactions, durability, recovery, keys, and operations |
 | [Curator CLI](cli/curator.md) | Informative command and CI guide for the Go implementation |
 | [Conformance](conformance/README.md) | Normative conformance classes, vectors, and execution contract |
 | [`schemas/v1`](schemas/v1) | Normative JSON Schemas for every versioned wire object |
 | [`conformance/v1`](conformance/v1) | Normative positive and negative test vectors |
+| [Release checklist](RELEASE.md) | Candidate, independent review, signing, checksum, and attestation gates |
 
 The normative keywords **MUST**, **MUST NOT**, **REQUIRED**, **SHALL**, **SHALL
 NOT**, **SHOULD**, **SHOULD NOT**, **RECOMMENDED**, **NOT RECOMMENDED**, **MAY**,
@@ -58,7 +60,7 @@ an implementation is never the normative oracle.
   implementation and provides static binaries for Linux, macOS, and Windows.
 - [csk](https://github.com/ivanopcode/cocoaskills) is an independent Python
   implementation.
-- [CocoaSkills Registry](https://github.com/ivanopcode/cocoaskills-registry)
+- [Curator Skill Registry](https://github.com/relux-works/curator-skill-registry)
   is an implementation of the registry-service profile.
 
 The implementations are evidence that the protocol is independently
@@ -67,9 +69,10 @@ shared test vectors, not by copying behavior from either codebase.
 
 ## Release status
 
-`1.0.0-rc.1` remains a draft until it receives an independent security review
+`1.0.0-rc.2` remains a draft until it receives an independent security review
 of the registry protocol and an independent interoperability review of the
-shared suite. See [COMPATIBILITY.md](COMPATIBILITY.md),
+shared suite. Review evidence is published under [`reviews/`](reviews/). See
+[COMPATIBILITY.md](COMPATIBILITY.md),
 [SECURITY.md](SECURITY.md), and [GOVERNANCE.md](GOVERNANCE.md).
 
 <!-- relux-ecosystem:start -->

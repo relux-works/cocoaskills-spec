@@ -35,6 +35,25 @@ governance changes and require the same review as release-policy changes.
 Release tags are immutable. A defective release is superseded by a new version
 and remains available for audit.
 
+## Independent stable review
+
+Before a stable release, maintainers freeze a commit that already carries the
+stable protocol version. One reviewer who is not a project maintainer or author
+of the reviewed changes performs the security review. A different independent
+reviewer performs the interoperability review. Affiliations and conflicts are
+disclosed. Each reviewer explicitly attests that they are not a project
+maintainer and did not author or commit the reviewed changes. Reports use
+different stable public reviewer contacts, follow
+`reviews/review-report-v2.schema.json`, and retain a public source URL
+establishing authorship and discussion.
+
+Critical and high findings must be resolved before release. A correction to a
+normative file creates a new candidate that must be reviewed again. After a
+report's `reviewed_commit`, only review evidence may change before the signed
+release tag. `tools/release_gate.py` enforces the review type, result, finding
+state, commit ancestry, and frozen normative diff. The operational sequence is
+listed in `RELEASE.md`.
+
 ## Decision record
 
 Changes that introduce a new schema version, alter signed bytes, or modify

@@ -39,19 +39,20 @@ jobs:
           git verify-tag "$GITHUB_REF_NAME"
           git verify-commit "$GITHUB_SHA"
           python tools/validate.py
+          python -B -m unittest discover -s tools -p 'test_*.py'
           go test ./tools/...
           go run ./tools/generate-vectors -root .
           git diff --exit-code -- conformance/v1
           version="${GITHUB_REF_NAME#v}"
-          grep -Fx "**Version:** ${version}" README.md
+          python tools/release_gate.py --version "$version" --commit "$GITHUB_SHA"
 
       - name: Package normative release
         run: |
           version="${GITHUB_REF_NAME#v}"
           directory="curator-protocol-${version}"
           mkdir "$directory"
-          cp -R README.md LICENSE CHANGELOG.md COMPATIBILITY.md SECURITY.md GOVERNANCE.md maintainers.allowed_signers \
-            protocol profiles cli conformance schemas decisions "$directory/"
+          cp -R README.md LICENSE CHANGELOG.md COMPATIBILITY.md SECURITY.md GOVERNANCE.md RELEASE.md maintainers.allowed_signers \
+            protocol profiles cli conformance schemas decisions reviews "$directory/"
           tar -czf "${directory}.tar.gz" "$directory"
           zip -qr "${directory}.zip" "$directory"
           sha256sum "${directory}.tar.gz" "${directory}.zip" > checksums.txt
@@ -66,7 +67,7 @@ jobs:
       - uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b # v3.0.1
         with:
           generate_release_notes: true
-          prerelease: true
+          prerelease: ${{ contains(github.ref_name, '-') }}
           files: |
             curator-protocol-*.tar.gz
             curator-protocol-*.zip

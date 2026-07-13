@@ -3,10 +3,38 @@
 All notable protocol changes are recorded here. Versions follow Semantic
 Versioning for the complete specification set.
 
-## Unreleased
+## 1.0.0-rc.2 - 2026-07-13
+
+### Added
+
+- A normative registry-service profile for stable pagination, serialized
+  append transactions, durability, recovery, backup/restore, key operations,
+  resource controls, health, observability, and an explicit threat model.
+- Executable registry-service and registry-client vectors covering conjunctive
+  queries, exact artifact identity, snapshot-bound cursors, auditor-scoped
+  idempotency, concurrent writers, rollback, recovery, retry safety, and limits.
+- A decision record separating the registry HTTP wire contract from production
+  service guarantees without changing deployed response objects.
+- A machine-validated independent review report format, stable-release gate,
+  and release checklist that forbid normative drift after review.
 
 ### Changed
 
+- Defined artifact identity as name, source identity, commit, and content hash,
+  preserving evidence when one source and commit produce different content.
+- Bound every pagination chain to one immutable signed snapshot boundary.
+- Scoped idempotency keys to an auditor and compared the submitted record's
+  CCJ-1 digest.
+- Required snapshot creation time to remain fixed for one committed boundary
+  and registry-service snapshot version to equal log size.
+- Defined an external high-water checkpoint as a signed registry snapshot and
+  made stable release artifacts conditional on two passing independent reports.
+- Added review-report schema v2, requiring separate public reviewer identities
+  and explicit non-maintainer/non-author attestations, with executable
+  stable-gate regression tests. Draft v1 reports remain readable but are not
+  valid stable-release evidence.
+- Separated durable client rollback state from disposable response caches and
+  required existing corruption and persistence failures to fail closed.
 - Made shell activation an explicitly optional interactive convenience and
   required agent command execution to remain independent from user profiles.
 - Defined portable direct project-shim locations and safe, non-destructive
@@ -15,6 +43,14 @@ Versioning for the complete specification set.
   handling of native Windows paths, and cached hook installation.
 - Added manager guidance for warning about prompt-visible runtime source paths
   and missing shell-neutral command resolution.
+
+### Compatibility
+
+- Existing protocol filenames, signed object schemas, endpoints, and response
+  shapes are unchanged.
+- Registry services must tighten behavior before claiming the production
+  registry-service class; existing clients continue to parse the same wire
+  objects.
 
 ## 1.0.0-rc.1 - 2026-07-13
 
